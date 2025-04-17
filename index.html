@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Space Shooter (Updated Spaceship)</title>
-    <style>
+    <title>Simple Space Shooter (Updated Spaceship - Larger Screen)</title> <style>
         body {
             display: flex;
             justify-content: center;
@@ -19,32 +18,39 @@
             border: 2px solid #333;
             background-color: #000; /* Black space background */
             display: block; /* Prevents extra space below canvas */
+            /* Optional: Add max-width/height if needed for smaller viewports */
+            /* max-width: 100%; */
+            /* max-height: 80vh; */
         }
         #scoreBoard {
-            margin-top: 10px;
+            margin-top: 10px; /* Adjust if needed for larger canvas */
+            margin-bottom: 10px; /* Added margin below score */
             font-size: 1.5em;
             color: #333;
         }
          #messageBoard {
-            position: absolute; /* Position over canvas */
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%); /* Center it */
-            color: red;
-            font-size: 3em;
-            font-weight: bold;
-            text-align: center;
-            display: none; /* Hidden initially */
-            background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent background */
-            padding: 20px;
-            border-radius: 10px;
-        }
+             position: absolute; /* Position over canvas */
+             /* Centering might need slight adjustment depending on final layout */
+             /* If canvas is very large, centering on canvas instead of viewport might be better */
+             top: 50%;
+             left: 50%;
+             transform: translate(-50%, -50%); /* Center it */
+             color: red;
+             font-size: 3em; /* Consider making this relative (e.g., 5vw) or scaling */
+             font-weight: bold;
+             text-align: center;
+             display: none; /* Hidden initially */
+             background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent background */
+             padding: 20px;
+             border-radius: 10px;
+             z-index: 10; /* Ensure it's on top */
+         }
     </style>
 </head>
 <body>
 
     <div id="scoreBoard">Score: <span id="score">0</span></div>
-    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <canvas id="gameCanvas" width="900" height="600"></canvas>
     <div id="messageBoard">GAME OVER</div>
 
     <script>
@@ -59,38 +65,40 @@
 
         // --- Player Settings ---
         const player = {
-            x: canvas.width / 2 - 25,
-            y: canvas.height - 40,
-            width: 50, // Hitbox width
-            height: 20, // Hitbox height
-            speed: 5,
+            // x and y will now calculate based on the NEW canvas dimensions
+            x: canvas.width / 2 - 25, // Stays centered horizontally
+            y: canvas.height - 40,  // Stays near the bottom
+            width: 50, // Hitbox width - You might want to scale this too
+            height: 20, // Hitbox height - You might want to scale this too
+            speed: 7, // Maybe increase speed slightly for larger area
             dx: 0, // Direction x
-            color: 'white' // *** CHANGED color to white ***
+            color: 'white'
         };
 
         // --- Bullet Settings ---
         const bullets = [];
         const bulletInfo = {
-            width: 5,
-            height: 10,
-            speed: 7,
+            width: 5,  // Consider scaling
+            height: 10, // Consider scaling
+            speed: 9, // Maybe increase speed slightly
             color: 'yellow',
             cooldown: 250, // Milliseconds between shots
             lastShotTime: 0
         };
 
         // --- Enemy Settings ---
+        // NOTE: Enemies will appear more clustered initially unless these are adjusted
         const enemies = [];
         const enemyInfo = {
             rows: 3,
             cols: 8,
-            width: 40, // Hitbox width
-            height: 20, // Hitbox height
-            padding: 15,
+            width: 40,  // Consider scaling
+            height: 20, // Consider scaling
+            padding: 15, // Consider scaling padding/offsets
             offsetTop: 30,
             offsetLeft: 40,
-            speed: 1,
-            dropAmount: 25, // How much they drop when hitting edge
+            speed: 1.5, // Maybe increase speed slightly
+            dropAmount: 30, // How much they drop when hitting edge
             color: 'red'
         };
         let enemyDirection = 1; // 1 for right, -1 for left
@@ -103,20 +111,16 @@
         };
 
         function keyDownHandler(e) {
-            // console.log('Key Down:', e.key);
             const key = e.key === ' ' ? 'Space' : e.key;
-
             if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'Space') {
                 keys[key] = true;
                 if (key === 'Space') {
                     e.preventDefault();
-                    // console.log('Spacebar default prevented');
                 }
             }
         }
 
         function keyUpHandler(e) {
-            // console.log('Key Up:', e.key);
             const key = e.key === ' ' ? 'Space' : e.key;
             if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'Space') {
                 keys[key] = false;
@@ -129,11 +133,16 @@
         // --- Game Functions ---
 
         function createEnemies() {
-            enemies.length = 0;
+            enemies.length = 0; // Clear existing enemies
+            // Calculate total width needed for enemies to center them better
+            const totalEnemyBlockWidth = enemyInfo.cols * enemyInfo.width + (enemyInfo.cols - 1) * enemyInfo.padding;
+            const dynamicOffsetLeft = (canvas.width - totalEnemyBlockWidth) / 2; // Center the block
+
             for (let r = 0; r < enemyInfo.rows; r++) {
                 for (let c = 0; c < enemyInfo.cols; c++) {
                     enemies.push({
-                        x: enemyInfo.offsetLeft + c * (enemyInfo.width + enemyInfo.padding),
+                        // Use dynamic offset for better centering on larger screens
+                        x: dynamicOffsetLeft + c * (enemyInfo.width + enemyInfo.padding),
                         y: enemyInfo.offsetTop + r * (enemyInfo.height + enemyInfo.padding),
                         width: enemyInfo.width,
                         height: enemyInfo.height,
@@ -143,38 +152,29 @@
             }
         }
 
-        // --- UPDATED DRAWING FUNCTIONS ---
+
+        // --- Drawing Functions ---
 
         function drawPlayer() {
-            // *** UPDATED spaceship shape ***
             const px = player.x;
             const py = player.y;
             const pw = player.width;
             const ph = player.height;
 
             ctx.beginPath();
-            // Nose cone
-            ctx.moveTo(px + pw / 2, py); // Top point
-            // Right wingtip (slightly back)
+            ctx.moveTo(px + pw / 2, py);
             ctx.lineTo(px + pw, py + ph * 0.8);
-            // Right engine back
             ctx.lineTo(px + pw * 0.8, py + ph);
-            // Center back indent
             ctx.lineTo(px + pw * 0.6, py + ph * 0.8);
             ctx.lineTo(px + pw * 0.4, py + ph * 0.8);
-             // Left engine back
             ctx.lineTo(px + pw * 0.2, py + ph);
-            // Left wingtip (slightly back)
             ctx.lineTo(px, py + ph * 0.8);
-            // Connect back to nose cone
             ctx.closePath();
-
-            ctx.fillStyle = player.color; // Use the updated white color
+            ctx.fillStyle = player.color;
             ctx.fill();
         }
 
         function drawEnemies() {
-            // Enemy drawing remains the same blocky shape
             enemies.forEach(enemy => {
                 if (enemy.alive) {
                     const ey = enemy.y;
@@ -196,15 +196,11 @@
                     ctx.lineTo(ex, ey + eh * 0.4);
                     ctx.lineTo(ex + ew * 0.2, ey + eh * 0.4);
                     ctx.closePath();
-
                     ctx.fillStyle = enemyInfo.color;
                     ctx.fill();
                 }
             });
         }
-
-        // --- END OF UPDATED DRAWING FUNCTIONS ---
-
 
         function drawBullets() {
             ctx.fillStyle = bulletInfo.color;
@@ -218,10 +214,12 @@
             scoreElement.textContent = score;
         }
 
+        // --- Movement and Logic Functions ---
+
         function movePlayer() {
             player.x += player.dx;
 
-            // Wall collision
+            // Wall collision uses canvas.width, so it adapts automatically
             if (player.x < 0) {
                 player.x = 0;
             } else if (player.x + player.width > canvas.width) {
@@ -243,11 +241,13 @@
             enemies.forEach(enemy => {
                 if (enemy.alive) {
                     enemy.x += enemyInfo.speed * enemyDirection;
+                    // Boundary check uses canvas.width, adapts automatically
                     if (enemy.x + enemy.width > canvas.width || enemy.x < 0) {
                         hitEdge = true;
                     }
+                    // Game over check uses player.y, which adapts automatically
                     if (enemy.y + enemy.height >= player.y - 10) {
-                       endGame();
+                        endGame();
                     }
                 }
             });
@@ -256,7 +256,11 @@
                 enemyDirection *= -1;
                 enemies.forEach(enemy => {
                     if (enemy.alive) {
-                       enemy.y += enemyInfo.dropAmount;
+                        enemy.y += enemyInfo.dropAmount;
+                        // Ensure enemies don't reverse past the edge after dropping
+                        enemy.x += enemyInfo.speed * enemyDirection * 2; // Adjust position slightly inward
+                         if (enemy.x < 0) enemy.x = 0;
+                         if (enemy.x + enemy.width > canvas.width) enemy.x = canvas.width - enemy.width;
                     }
                 });
             }
@@ -267,7 +271,6 @@
              const canShoot = now - bulletInfo.lastShotTime > bulletInfo.cooldown;
 
             if (keys.Space && canShoot) {
-                // console.log('Firing bullet!');
                 bullets.push({
                     x: player.x + player.width / 2 - bulletInfo.width / 2,
                     y: player.y,
@@ -293,23 +296,22 @@
                         enemy.alive = false;
                         bullets.splice(i, 1);
                         score += 10;
-                        break;
+                        break; // Stop checking this bullet against other enemies
                     }
                 }
             }
         }
 
          function checkWinCondition() {
-            const allDead = enemies.every(enemy => !enemy.alive);
-            if (allDead && enemies.length > 0) {
-                // console.log("You Win!");
-                endGame("YOU WIN!");
-            }
-        }
+             const allDead = enemies.every(enemy => !enemy.alive);
+             // Ensure enemies have been created before checking win
+             if (enemies.length > 0 && allDead) {
+                 endGame("YOU WIN!");
+             }
+         }
 
         function endGame(message = "GAME OVER") {
             if (!gameOver) {
-                // console.log("Game Over Triggered:", message);
                 gameOver = true;
                 messageBoard.textContent = message;
                 messageBoard.style.display = 'block';
@@ -337,11 +339,12 @@
             moveBullets();
             moveEnemies();
             collisionDetection();
-            checkWinCondition();
+            checkWinCondition(); // Check win condition every frame
         }
 
         // --- Draw Function (Called every frame) ---
         function draw() {
+            // Clear the entire canvas based on its current size
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawPlayer();
             drawBullets();
@@ -354,16 +357,13 @@
             update();
             draw();
             if (!gameOver) {
-               gameLoopId = requestAnimationFrame(gameLoop);
+                gameLoopId = requestAnimationFrame(gameLoop);
             }
         }
 
         // --- Start Game ---
-        // console.log("Initializing game...");
-        createEnemies();
-        // console.log("Enemies created:", enemies.length);
+        createEnemies(); // Create enemies based on potentially new canvas size
         gameLoop();
-        // console.log("Game loop started.");
 
     </script>
 
